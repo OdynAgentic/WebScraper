@@ -16,7 +16,7 @@ func CreateOpenAiManual() {
 	}
 
 	// Write the data to a file
-	err = ioutil.WriteFile("../data/openai_api_manual.json", out, 0644)
+	err = ioutil.WriteFile("/Users/lpm/Repo/ODYN Agentic/project/WebScraper/web_scraper/data/openai_api_manual.json", out, 0644)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
 		return
