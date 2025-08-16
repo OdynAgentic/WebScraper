@@ -1,4 +1,4 @@
-package main
+package scripts
 
 import (
 	"fmt"
@@ -6,9 +6,9 @@ import (
 	"os/exec"
 )
 
-func createOpenAiManual() {
+func CreateOpenAiManual() {
 	// Use the web_scraper to get the data
-	cmd := exec.Command("../web_scraper", "openai api documentation")
+	cmd := exec.Command("/Users/lpm/Repo/ODYN Agentic/project/WebScraper/web_scraper/web_scraper", "openai api documentation")
 	out, err := cmd.Output()
 	if err != nil {
 		fmt.Println("Error running web_scraper:", err)
