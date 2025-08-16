@@ -1,55 +1,58 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
+	"log"
+	"net/url"
 	"os"
 	"strings"
+	"time"
 
-	"golang.org/x/net/html"
+	"github.com/chromedp/chromedp"
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run main.go <URL>")
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: go run main.go <URL or search query>")
 		os.Exit(1)
 	}
-	url := os.Args[1]
+	input := strings.Join(os.Args[1:], " ")
 
-	resp, err := http.Get(url)
+	// Check if the input is a URL
+	_, err := url.ParseRequestURI(input)
+	var targetURL string
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error fetching URL: %v\n", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "Error: status code %d\n", resp.StatusCode)
-		os.Exit(1)
+		// If it's not a URL, treat it as a search query for Google
+		targetURL = "https://www.google.com/search?q=" + url.QueryEscape(input)
+	} else {
+		targetURL = input
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	// create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// create chrome instance
+	ctx, cancel = chromedp.NewContext(ctx)
+	defer cancel()
+
+	var text string
+	err = chromedp.Run(ctx,
+		chromedp.Navigate(targetURL),
+		// Wait for the main content to load
+		chromedp.WaitVisible("body", chromedp.ByQuery),
+		// Extract text from the main content
+		chromedp.Text("body", &text, chromedp.ByQuery),
+	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading response body: %v\n", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
-	doc, err := html.Parse(strings.NewReader(string(body)))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing HTML: %v\n", err)
-		os.Exit(1)
-	}
+	// Clean up the text
+	text = strings.TrimSpace(text)
+	text = strings.ReplaceAll(text, "\n\n\n", "\n")
+	text = strings.ReplaceAll(text, "\n\n", "\n")
 
-	var f func(*html.Node)
-	f = func(n *html.Node) {
-		if n.Type == html.TextNode {
-			fmt.Print(n.Data)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			f(c)
-		}
-	}
-	f(doc)
-
+	fmt.Println(text)
 }
